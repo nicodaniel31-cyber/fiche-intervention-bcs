@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fiche d’intervention – Finale numérotée PDF plein</title>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.5/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:12px}
+.container{max-width:900px;margin:auto;background:#fff;padding:16px;border-radius:10px}
+h1{text-align:center;text-decoration:underline;margin-bottom:2px}
+h2{text-align:center;margin-top:0}
+#ficheNumber{text-align:right;font-weight:bold;margin-bottom:10px}
+
+label{font-weight:bold;display:block;margin-top:12px}
+input,select,textarea,button{width:100%;padding:10px;margin-top:4px;font-size:15px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.signature-box{margin-top:18px}
+canvas{border:1px solid #000;background:#fff}
+
+button{
+  background:#1f4fd8;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  margin-top:16px;
+  padding:12px;
+  font-size:16px;
+}
+button.pdf{background:#0a8f08;font-weight:bold}
+</style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Fiche BCS">
+
+</head>
+
+<body>
+<div class="container">
+<div id="ficheNumber"></div>
+<h1>FICHE D’INTERVENTION</h1>
+<h2>BCS FRANCE SA – Département 3D</h2>
+
+<label>Référence commande</label>
+<input id="ref">
+
+<label>Technicien</label>
+<select id="tech">
+<option>Daniel TEULIER</option>
+<option>Cyril DURAND</option>
+<option>Lorenzo CHATEAU</option>
+<option>Dominique CHOQUET</option>
+<option>Yves AZZOPARDI</option>
+<option>Gabriel FORESTIER</option>
+</select>
+
+<div class="grid">
+  <div><label>Date</label><input id="date" type="date"></div>
+  <div><label>Heure d’arrivée</label><input id="ha" type="time"></div>
+  <div><label>Heure de départ</label><input id="hd" type="time"></div>
+</div>
+
+<label>Nom du client</label><input id="client">
+<label>Adresse</label><input id="adresse">
+
+<label>Nuisible traité</label>
+<select id="nuisible">
+<option>Rongeurs</option><option>Blattes</option><option>Punaises de lit</option>
+<option>Fourmis</option><option>Guêpes / Frelons</option>
+<option>Chenilles processionnaires</option><option>Pigeons</option>
+<option>Nettoyage / Désinfection</option>
+</select>
+
+<label>Type de traitement</label>
+<select id="type"><option>Curatif</option><option>Préventif</option></select>
+
+<label>Commentaires</label><textarea id="com" rows="4"></textarea>
+
+<div class="signature-box">
+<strong>Signature client</strong><br>
+<canvas id="sigClient" width="400" height="150"></canvas>
+</div>
+
+<div class="signature-box">
+<strong>Signature technicien</strong><br>
+<canvas id="sigTech" width="400" height="150"></canvas>
+</div>
+
+<button class="pdf" onclick="exportPDF()">📄 TÉLÉCHARGER LE PDF</button>
+</div>
+
+<script>
+const sigClient = new SignaturePad(document.getElementById("sigClient"));
+const sigTech = new SignaturePad(document.getElementById("sigTech"));
+const { jsPDF } = window.jspdf;
+
+/* NUMÉRO DE FICHE AUTO +1 */
+let counter = localStorage.getItem("ficheCounter");
+if(!counter){ counter = 1; }
+document.getElementById("ficheNumber").innerText = "N° FICHE : " + counter;
+
+function clean(text){
+  return text.replace(/[^a-zA-Z0-9-_ ]/g,"").replace(/\s+/g,"_");
+}
+
+function exportPDF(){
+  const doc = new jsPDF();
+  let y = 15;
+
+  doc.setFontSize(16);
+  doc.text("FICHE D’INTERVENTION", 105, y, {align:"center"});
+  y+=8;
+  doc.setFontSize(11);
+  doc.text("BCS FRANCE SA – Département 3D", 105, y, {align:"center"});
+  y+=10;
+
+  doc.setFontSize(10);
+  doc.text("N° Fiche : " + counter, 150, 12);
+
+  doc.text("Référence commande : " + ref.value, 10, y); y+=8;
+  doc.text("Technicien : " + tech.value, 10, y); y+=8;
+  doc.text("Date : " + date.value, 10, y); y+=8;
+  doc.text("Heure arrivée : " + ha.value + "    Heure départ : " + hd.value, 10, y); y+=10;
+
+  doc.text("Client : " + client.value, 10, y); y+=8;
+  doc.text("Adresse : " + adresse.value, 10, y); y+=10;
+
+  doc.text("Nuisible traité : " + nuisible.value, 10, y); y+=8;
+  doc.text("Type de traitement : " + type.value, 10, y); y+=10;
+
+  doc.text("Commentaires :", 10, y); y+=6;
+  const lines = doc.splitTextToSize(com.value, 180);
+  doc.text(lines, 10, y);
+  y += lines.length * 6 + 12;
+
+  if(!sigClient.isEmpty()){
+    doc.text("Signature client :", 10, y); y+=6;
+    doc.addImage(sigClient.toDataURL(), "PNG", 10, y, 80, 35);
+  }
+
+  if(!sigTech.isEmpty()){
+    doc.text("Signature technicien :", 110, y-6);
+    doc.addImage(sigTech.toDataURL(), "PNG", 110, y, 80, 35);
+  }
+
+  doc.setFontSize(8);
+  doc.text("S.A. à directoire et Conseil de surveillance au capital de 2.325.000€",105,275,{align:"center"});
+  doc.text("Siège social : BCS FRANCE SA 400 Avenue de Roumanille 06410 BIOT",105,280,{align:"center"});
+  doc.text("SIREN 390299790 - RCS ANTIBES - Code NAF 8129A",105,285,{align:"center"});
+
+  const filename =
+    "Fiche_intervention_" +
+    clean(counter.toString()) + "_" +
+    clean(tech.value) + "_" +
+    clean(ref.value || "Sans_reference") +
+    ".pdf";
+
+  doc.save(filename);
+
+  localStorage.setItem("ficheCounter", parseInt(counter) + 1);
+}
+</script>
+
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
+</script>
+
+</body>
+</html>
